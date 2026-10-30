@@ -70,3 +70,35 @@ def test_order_now_all_attempts_fail(reservations: Reservations):
     with pytest.raises(Exception, match="sold out"):
         reservations.order_now("123", "Test Item", 2)
     assert reservations.active_orders == {}
+
+
+def test_reserve_increases_existing_amount(reservations: Reservations):
+    reservations.reserve("123", "Test Item")
+    reservations.reserve("123", "Test Item")
+    reservations.reserve("456", "Other Item")
+    assert reservations.reservation_query == [Reservation("123", 2, "Test Item"), Reservation("456", 1, "Other Item")]
+
+
+def test_make_orders_partial_amount_keeps_remainder(reservations: Reservations, tgtg_item: dict):
+    tgtg_item["items_available"] = 2
+    callback_mock = MagicMock()
+    reservations.reserve("123", "Test Item", 5)
+    reservations.make_orders({"123": Item(tgtg_item)}, callback_mock)
+    reservations.client.create_order.assert_called_once_with("123", 2)  # type: ignore[attr-defined]
+    callback_mock.assert_called_once_with(Reservation("123", 2, "Test Item"))
+    assert reservations.reservation_query == [Reservation("123", 3, "Test Item")]
+
+
+def test_make_orders_failure_keeps_amount(reservations: Reservations, tgtg_item: dict):
+    reservations.client.create_order.side_effect = Exception("sold out")  # type: ignore[attr-defined]
+    callback_mock = MagicMock()
+    reservations.reserve("123", "Test Item", 2)
+    reservations.make_orders({"123": Item(tgtg_item)}, callback_mock)
+    callback_mock.assert_not_called()
+    assert reservations.reservation_query == [Reservation("123", 2, "Test Item")]
+
+
+def test_cancel_all_reservations(reservations: Reservations):
+    reservations.reserve("123", "Test Item")
+    reservations.cancel_all_reservations()
+    assert reservations.reservation_query == []
