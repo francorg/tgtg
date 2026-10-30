@@ -102,3 +102,13 @@ def test_cancel_all_reservations(reservations: Reservations):
     reservations.reserve("123", "Test Item")
     reservations.cancel_all_reservations()
     assert reservations.reservation_query == []
+
+
+def test_make_orders_keeps_ordering_remainder_after_each_expiry(reservations: Reservations, tgtg_item: dict):
+    tgtg_item["items_available"] = 2
+    reservations.reserve("123", "Test Item", 6)
+    ordered = []
+    for _ in range(3):  # each scan sees 2 bags again, e.g. after the previous order expired
+        reservations.make_orders({"123": Item(tgtg_item)}, lambda res: ordered.append(res.amount))
+    assert ordered == [2, 2, 2]
+    assert reservations.reservation_query == []
