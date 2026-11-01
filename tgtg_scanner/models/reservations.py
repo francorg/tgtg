@@ -24,6 +24,13 @@ class Reservation:
 
 
 @dataclass
+class StartupReservations:
+    """Reservations created from the config on startup, announced in one message."""
+
+    reservations: list[Reservation]
+
+
+@dataclass
 class OrderRequest:
     """Request to order an item immediately, up to the given amount."""
 

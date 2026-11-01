@@ -9,7 +9,7 @@ import responses
 from pytest_mock.plugin import MockerFixture
 
 from tgtg_scanner.models import Config, Cron, Favorites, Item, Reservations
-from tgtg_scanner.models.reservations import Order, OrderRequest
+from tgtg_scanner.models.reservations import Order, OrderRequest, Reservation, StartupReservations
 from tgtg_scanner.notifiers.apprise import Apprise
 from tgtg_scanner.notifiers.console import Console
 from tgtg_scanner.notifiers.discord import Discord
@@ -409,3 +409,29 @@ def test_telegram_order_button_failure(reservations: Reservations, favorites: Fa
     update = _callback_update("123456")
     asyncio.run(telegram._order_now(update, OrderRequest("123", "Test Item", 3)))
     update.callback_query.edit_message_reply_markup.assert_not_awaited()
+
+
+def test_telegram_startup_reservations_message(reservations: Reservations, favorites: Favorites):
+    telegram = _telegram_for_orders(reservations, favorites)
+    telegram._send_message = AsyncMock()  # type: ignore[method-assign]
+    summary = StartupReservations([Reservation("1", 6, "Store A"), Reservation("2", 2, "Store B")])
+    asyncio.run(telegram._send(summary))
+    telegram._send_message.assert_awaited_once()
+    message = telegram._send_message.await_args.args[0]
+    assert "Reservations created on startup" in message
+    assert "• Store A × 6" in message
+    assert "• Store B × 2" in message
+
+
+def test_startup_reservations_are_queued_and_ignored_by_item_only_notifiers(
+    reservations: Reservations, favorites: Favorites, capsys: pytest.CaptureFixture
+):
+    config = Config()
+    config.console.enabled = True
+    config.console.cron = Cron()
+    console = Console(config, reservations, favorites)
+    console.thread = MagicMock(is_alive=lambda: True)  # do not start the notifier thread
+    console.send(StartupReservations([Reservation("1", 6, "Store A")]))
+    assert console.queue.qsize() == 1
+    console._send(console.queue.get_nowait())
+    assert capsys.readouterr().out == ""

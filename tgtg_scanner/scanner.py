@@ -16,6 +16,7 @@ from tgtg_scanner.models import (
     Metrics,
     Reservations,
 )
+from tgtg_scanner.models.reservations import Reservation, StartupReservations
 from tgtg_scanner.models.stock_monitor import StockMonitor
 from tgtg_scanner.notifiers import Notifiers
 from tgtg_scanner.tgtg_client import BASE_URL, TgtgClient, extract_datadome, normalize_cookie, resolve_user_agent
@@ -124,6 +125,7 @@ class Scanner:
         if not self.config.reserve_items:
             return
         favorite_ids = {item.item_id for item in self._load_favorite_items()}
+        reserved: list[Reservation] = []
         for item_id, amount in self.config.reserve_items.items():
             try:
                 item = self._item_from_api(self.tgtg_client.get_item(item_id))
@@ -133,7 +135,10 @@ class Scanner:
             if item_id not in favorite_ids:
                 self.item_ids.add(item_id)
             self.reservations.reserve(item_id, item.display_name, amount)
+            reserved.append(Reservation(item_id, amount, item.display_name))
             log.info("Reserved %s x %s from config", amount, item.display_name)
+        if reserved and self.notifiers:
+            self.notifiers.send(StartupReservations(reserved))
 
     def _load_items(self) -> list[Item]:
         """Fetch configured item IDs and account favorites as Items."""

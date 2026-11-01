@@ -97,6 +97,8 @@ reserves 2 bags of item `1234567` and 1 bag of item `2345678` (the amount defaul
 The bags are ordered as soon as they are available.
 Items that are not in your favorites are scanned in addition.
 Unknown item IDs are logged and skipped.
+The Telegram bot sends one message listing the reservations that were created.
+Other notifiers do not send anything for reservations.
 As with a manual reservation, they stay queued until you cancel them, e.g. with `/cancelallreservations`.
 
 **Important!**

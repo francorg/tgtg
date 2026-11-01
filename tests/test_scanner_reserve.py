@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from tgtg_scanner.errors import TgtgAPIError
 from tgtg_scanner.models import Config, Reservations
-from tgtg_scanner.models.reservations import Reservation
+from tgtg_scanner.models.reservations import Reservation, StartupReservations
 from tgtg_scanner.scanner import Scanner
 
 
@@ -19,6 +19,7 @@ def _scanner(reserve_items: dict[str, int], favorite_ids: list[str], tgtg_item: 
     ]
     scanner.reservations = Reservations(scanner.tgtg_client)
     scanner.metrics = MagicMock()
+    scanner.notifiers = MagicMock()
     return scanner
 
 
@@ -47,3 +48,19 @@ def test_reserve_configured_items_empty_config_makes_no_requests(tgtg_item: dict
     scanner = _scanner({}, [], tgtg_item)
     scanner._reserve_configured_items()
     scanner.tgtg_client.get_favorites.assert_not_called()
+
+
+def test_reserve_configured_items_sends_summary_notification(tgtg_item: dict):
+    scanner = _scanner({"123": 2, "456": 1}, ["123", "456"], tgtg_item)
+    scanner._reserve_configured_items()
+    name = tgtg_item["display_name"]
+    scanner.notifiers.send.assert_called_once_with(  # type: ignore[union-attr]
+        StartupReservations([Reservation("123", 2, name), Reservation("456", 1, name)])
+    )
+
+
+def test_reserve_configured_items_no_notification_when_nothing_reserved(tgtg_item: dict):
+    scanner = _scanner({"999": 1}, [], tgtg_item)
+    scanner.tgtg_client.get_item.side_effect = TgtgAPIError(404, b"not found")
+    scanner._reserve_configured_items()
+    scanner.notifiers.send.assert_not_called()  # type: ignore[union-attr]
