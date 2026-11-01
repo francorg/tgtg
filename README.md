@@ -5,6 +5,29 @@
 [![GitHub release](https://img.shields.io/github/release/ihor-chaban/tgtg-scanner?include_prereleases=&sort=semver&color=blue)](https://github.com/ihor-chaban/tgtg-scanner/releases/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/gorus5/tgtg-scanner)](https://hub.docker.com/r/gorus5/tgtg-scanner)
 
+> [!NOTE]
+> This is a personal fork based on [ihor-chaban/tgtg-scanner](https://github.com/ihor-chaban/tgtg-scanner) v1.5.0,
+> which is itself a fork of the original [Der-Henning/tgtg](https://github.com/Der-Henning/tgtg).
+> Everything from ihor-chaban's version is included; the additions of this fork are listed below.
+
+## What's new in this fork
+
+- **Reserve button on Telegram notifications**: every notification for an available item has a
+  `🛒 Reserve N` button that immediately orders the maximum available amount on your account.
+  If the store limits the bags per customer, it retries with one bag less until the order succeeds.
+  Only the chats configured in the Telegram notifier can use it.
+  See the [FAQ](https://github.com/francorg/tgtg/wiki/FAQ#reserve-button-on-notifications).
+- **Reserve on startup**: the new `ReserveItems` option (`RESERVE_ITEMS` for Docker) takes a
+  comma-separated `item_id:amount` list and reserves those items as soon as the scanner starts,
+  as if you had used `/reserve` manually. Items that are not in your favorites are monitored too.
+  See the [FAQ](https://github.com/francorg/tgtg/wiki/FAQ#reserve-on-startup) and
+  [Configuration](https://github.com/francorg/tgtg/wiki/Configuration).
+- **Startup summary on Telegram**: after reserving the `ReserveItems`, the scanner sends a Telegram
+  message listing the reservations it created.
+- **Partial orders keep the rest of the reservation**: if you reserve 6 bags and only 2 become available,
+  the scanner orders 2 and keeps the remaining 4 reserved, as in the original project.
+  In ihor-chaban v1.5.0 the remaining reservation was dropped.
+
 TGTG Scanner observes your favorite TGTG Magic Bags for newly available items and notifies you
 via mail, IFTTT, Ntfy, Telegram, PushSafer, Apprise or any other WebHook.
 Notifications will be sent when the available amount of Magic Bags rises from zero to something.
