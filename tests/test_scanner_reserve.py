@@ -47,7 +47,7 @@ def test_reserve_configured_item_unknown_is_skipped(tgtg_item: dict):
 def test_reserve_configured_items_empty_config_makes_no_requests(tgtg_item: dict):
     scanner = _scanner({}, [], tgtg_item)
     scanner._reserve_configured_items()
-    scanner.tgtg_client.get_favorites.assert_not_called()
+    scanner.tgtg_client.get_favorites.assert_not_called()  # type: ignore[attr-defined]
 
 
 def test_reserve_configured_items_sends_summary_notification(tgtg_item: dict):

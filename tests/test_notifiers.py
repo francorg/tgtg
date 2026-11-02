@@ -417,6 +417,7 @@ def test_telegram_startup_reservations_message(reservations: Reservations, favor
     summary = StartupReservations([Reservation("1", 6, "Store A"), Reservation("2", 2, "Store B")])
     asyncio.run(telegram._send(summary))
     telegram._send_message.assert_awaited_once()
+    assert telegram._send_message.await_args is not None
     message = telegram._send_message.await_args.args[0]
     assert "Reservations created on startup" in message
     assert "• Store A × 6" in message
@@ -433,5 +434,5 @@ def test_startup_reservations_are_queued_and_ignored_by_item_only_notifiers(
     console.thread = MagicMock(is_alive=lambda: True)  # do not start the notifier thread
     console.send(StartupReservations([Reservation("1", 6, "Store A")]))
     assert console.queue.qsize() == 1
-    console._send(console.queue.get_nowait())
+    console._send(console.queue.get_nowait())  # type: ignore[arg-type]
     assert capsys.readouterr().out == ""
