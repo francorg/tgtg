@@ -64,6 +64,10 @@ class Reservations:
     def make_orders(self, state: dict[str, Item], callback: Callable[[Reservation], None]) -> None:
         """Create orders for reservations.
 
+        Orders as many bags as possible right away: if the full amount fails
+        (e.g. stock already partly sold or a per-order limit), retries with
+        one bag less instead of waiting for the next scan.
+
         Args:
             state (Dict[str, Item]): Current item state
             callback (Callable[[Reservation], None]): Callback for each order
@@ -73,16 +77,16 @@ class Reservations:
         for reservation in self.reservation_query:
             item = state.get(reservation.item_id)
             if item and item.items_available > 0:
-                ordered = Reservation(
-                    reservation.item_id,
-                    min(reservation.amount, item.items_available),
-                    reservation.display_name,
-                )
                 try:
-                    self._create_order(ordered)
+                    order = self.order_now(
+                        reservation.item_id,
+                        reservation.display_name,
+                        min(reservation.amount, item.items_available),
+                    )
                 except Exception as exc:
                     log.warning("Order failed: %s", exc)
                 else:
+                    ordered = Reservation(reservation.item_id, order.amount, reservation.display_name)
                     reservation.amount -= ordered.amount
                     if reservation.amount > 0:
                         remaining.append(reservation)
@@ -144,14 +148,3 @@ class Reservations:
         """Cancel all active orders."""
         for order_id in list(self.active_orders):
             self.cancel_order(order_id)
-
-    def _create_order(self, reservation: Reservation) -> None:
-        res = self.client.create_order(reservation.item_id, reservation.amount)
-        order_id = res.get("id")
-        if order_id:
-            self.active_orders[order_id] = Order(
-                order_id,
-                reservation.item_id,
-                reservation.amount,
-                reservation.display_name,
-            )

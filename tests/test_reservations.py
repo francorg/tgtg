@@ -98,6 +98,22 @@ def test_make_orders_failure_keeps_amount(reservations: Reservations, tgtg_item:
     assert reservations.reservation_query == [Reservation("123", 2, "Test Item")]
 
 
+def test_make_orders_lowers_amount_in_same_scan(reservations: Reservations, tgtg_item: dict):
+    tgtg_item["items_available"] = 5
+    reservations.client.create_order.side_effect = [  # type: ignore[attr-defined]
+        Exception("INSUFFICIENT_STOCK"),
+        Exception("INSUFFICIENT_STOCK"),
+        {"id": "1"},
+    ]
+    callback_mock = MagicMock()
+    reservations.reserve("123", "Test Item", 6)
+    reservations.make_orders({"123": Item(tgtg_item)}, callback_mock)
+    assert [c.args for c in reservations.client.create_order.call_args_list] == [("123", 5), ("123", 4), ("123", 3)]  # type: ignore[attr-defined]
+    callback_mock.assert_called_once_with(Reservation("123", 3, "Test Item"))
+    assert reservations.active_orders == {"1": Order("1", "123", 3, "Test Item")}
+    assert reservations.reservation_query == [Reservation("123", 3, "Test Item")]
+
+
 def test_cancel_all_reservations(reservations: Reservations):
     reservations.reserve("123", "Test Item")
     reservations.cancel_all_reservations()
